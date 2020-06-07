@@ -38,7 +38,7 @@ def solve_line(line, pat):
             return _SolLnDPRetType(False, set(), set())
 
         if j >= m:
-            if np.any(line[i:] == 1):
+            if np.any(line[i:] == FILL):
                 return _SolLnDPRetType(False, set(), set())
             return _SolLnDPRetType(True, set(), set(range(i, n)))
 
@@ -50,8 +50,7 @@ def solve_line(line, pat):
 
         # is line[i:i+pat[j]] valid to be all filled?
         fill_valid, fill_filled, fill_empty = False, set(), set()
-        if (i+pat[j] == n or i+pat[j] < n and line[i+pat[j]] <= 0) and np.all(line[i:i+pat[j]] != 0):
-            # line[idx] <= 0 means empty or undefined
+        if (i+pat[j] == n or i+pat[j] < n and line[i+pat[j]] != FILL) and np.all(line[i:i+pat[j]] != EMPTY):
             fill_dp = dp(i + pat[j] + 1, j + 1)
             if fill_dp.valid:
                 fill_valid = True
@@ -65,7 +64,7 @@ def solve_line(line, pat):
 
         # is line[i] valid to be empty?
         empty_valid, empty_filled, empty_empty = False, set(), set()
-        if line[i] <= 0:
+        if line[i] != FILL:
             empty_dp = dp(i + 1, j)
             if empty_dp.valid:
                 empty_valid = True
@@ -129,9 +128,18 @@ class Solver:
         self._verbose = False
 
     def verbose(self, state):
+        """ whether print some debug info
+
+        :param state: bool, print or not
+        :return: None
+        """
         self._verbose = state
 
     def solve(self):
+        """
+
+        :return:
+        """
         nrow, ncol = self._nrow, self._ncol
 
         rows = _SolInfo(set(range(nrow)), set(range(nrow)), [[] for _ in range(nrow)])
@@ -153,7 +161,7 @@ class Solver:
 
         def rollback():
             for r, c in updated:
-                mat[r][c] = -1
+                mat[r][c] = UNDEF
 
         # do bfs on rows and cols alternately
         while rows.to_solve:
@@ -181,6 +189,7 @@ class Solver:
             row_pats, col_pats = col_pats, row_pats
             mat = mat.T
 
+        # no cells can be marked for sure. Check if all rows and cols are solved
         if not rows.remain and not cols.remain:
             return True
 
@@ -190,16 +199,16 @@ class Solver:
             swapped = not swapped
             row_pats, col_pats = col_pats, row_pats
 
-        for ones, zeros in self._gen_backtrack(rows.pat_range, cols.pat_range):
-            nxt_row = set(ones[0]) | set(zeros[0])
-            nxt_col = set(ones[1]) | set(zeros[1])
+        # problem is not solved yet. Try some assumptions and do backtrack
+        for filled, empty in self._gen_backtrack(rows.pat_range, cols.pat_range):
+            nxt_row = set(filled[0]) | set(empty[0])
+            nxt_col = set(filled[1]) | set(empty[1])
 
-            # do backtrack
-            mat[ones], mat[zeros] = 1, 0
+            mat[filled], mat[empty] = FILL, EMPTY
             if self._solve(_SolInfo(nxt_row, set(rows.remain), list(rows.pat_range)),
                            _SolInfo(nxt_col, set(cols.remain), list(cols.pat_range))):
                 return True
-            mat[ones], mat[zeros] = -1, -1
+            mat[filled], mat[empty] = UNDEF, UNDEF
 
         rollback()
         return False
@@ -218,6 +227,7 @@ class Solver:
         nrow, ncol = self._nrow, self._ncol
         row_pats, col_pats = self._row_pats, self._col_pats
 
+        # row with min possible ranges
         row_min = {
             'ln_idx': -1,
             'pat_idx': -1,
@@ -233,6 +243,7 @@ class Solver:
                     row_min['len'] = right - left + 1
                     row_min['range'] = (left, right)
 
+        # col with min possible ranges
         col_min = {
             'ln_idx': -1,
             'pat_idx': -1,
@@ -248,6 +259,7 @@ class Solver:
                     col_min['len'] = right - left + 1
                     col_min['range'] = (left, right)
 
+        # compare row min and col min
         if row_min['len'] < col_min['len']:
             line = mat[row_min['ln_idx']]
             pat = row_pats[row_min['ln_idx']][row_min['pat_idx']]
@@ -257,22 +269,23 @@ class Solver:
             pat = col_pats[col_min['ln_idx']][col_min['pat_idx']]
             pat_range = col_min['range']
 
+        # start indices of all possibilities
         starts = list(range(pat_range[0], pat_range[1]+1))
         random.shuffle(starts)  # add some randomness
         line_len = len(line)
         for s in starts:
             e = s + pat
 
-            if (np.any(line[s:e]) == 0) or (s > 0 and line[s-1] == 1) or (e < line_len and line[e] == 1):
+            if (np.any(line[s:e]) == EMPTY) or (s > 0 and line[s-1] == FILL) or (e < line_len and line[e] == FILL):
                 continue
 
-            ones = [i for i in range(s, e) if line[i] == -1]
-            zeros = [i for i in (s-1, e) if 0 <= i < line_len and line[i] == -1]
+            filled = [i for i in range(s, e) if line[i] == UNDEF]
+            empty = [i for i in (s-1, e) if 0 <= i < line_len and line[i] == UNDEF]
 
-            if not ones and not zeros:
+            if not filled and not empty:
                 continue
 
             if row_min['len'] < col_min['len']:
-                yield ([row_min['ln_idx']], ones), ([row_min['ln_idx']], zeros)
+                yield ([row_min['ln_idx']], filled), ([row_min['ln_idx']], empty)
             else:
-                yield (ones, [col_min['ln_idx']]), (zeros, [col_min['ln_idx']])
+                yield (filled, [col_min['ln_idx']]), (empty, [col_min['ln_idx']])

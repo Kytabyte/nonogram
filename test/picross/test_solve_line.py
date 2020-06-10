@@ -1,12 +1,12 @@
 import numpy as np
 import pytest
 
-import nonogram as ng
+import picross as pc
 
 
 def _do_check(line, pat, expected, solvable=True):
     line, expected = np.array(line), np.array(expected)
-    ret = ng.solve_line(line, pat)
+    ret = pc.solve_line(line, pat)
     assert ret.valid == solvable
     assert np.all(line == expected)
 

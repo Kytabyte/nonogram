@@ -1,2 +1,2 @@
-# nonogram
-A fast nonogram solver
+# picross
+A fast nonogram/picross solver.

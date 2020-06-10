@@ -1,6 +1,6 @@
 import numpy as np
 
-import nonogram as ng
+import picross as pc
 
 
 def test_visualize():
@@ -9,4 +9,4 @@ def test_visualize():
         [0, -1, 1],
         [0, 0, 0]
     ])
-    ng.show(mat)
+    pc.show(mat)

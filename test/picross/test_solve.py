@@ -1,15 +1,15 @@
 import numpy as np
 import pytest
 
-import nonogram as ng
+import picross as pc
 
 
 def _do_simple_solve(rows, cols, mat=None):
-    return ng.solve(rows, cols, mat)
+    return pc.solve(rows, cols, mat)
 
 
 def _do_solve_with_solver(rows, cols, mat=None):
-    solver = ng.solver.Solver(rows, cols, mat)
+    solver = pc.solver.Solver(rows, cols, mat)
     return solver.solve(), solver
 
 
@@ -47,7 +47,7 @@ def test_mat_shape():
     cols = [[], [], []]
     mat = np.zeros((3, 3))
     with pytest.raises(RuntimeError):
-        solver = ng.solve(rows, cols, mat)
+        solver = pc.solve(rows, cols, mat)
 
 
 # simple test, no stat check
